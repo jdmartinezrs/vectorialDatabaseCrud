@@ -1,0 +1,27 @@
+# Ignorar el entorno virtual
+/entorno/
+
+# Ignorar archivos de configuración del entorno Python
+*.pyc
+*.pyo
+__pycache__/
+
+# Ignorar dependencias de pip
+Pipfile.lock
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Ignorar archivos temporales y cachés del editor
+.vscode/
+.idea/
+*.swp
+
+# Ignorar la carpeta de persistencia de la base de datos (si la usas)
+chromadb/
+
+# Ignorar archivos de configuración específicos de sistemas operativos
+.DS_Store  # macOS
+Thumbs.db  # Windows
