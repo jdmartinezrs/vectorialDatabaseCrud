@@ -1,3 +1,97 @@
+# CRUD en Base Vectorial con ChromaDB
+
+```
+# Guía de Instalación y Configuración
+
+Esta guía te ayudará a crear un entorno virtual, instalar dependencias necesarias, y configurar Jupyter Notebook para usarlo con el entorno activado.
+
+### 1. Crear un Entorno Virtual
+
+Para comenzar, crea un entorno virtual en tu proyecto:
+
+```bash
+python -m venv venv
+```
+
+### 2. Activar el Entorno Virtual
+
+Dependiendo de tu sistema operativo, activa el entorno virtual:
+
+- En Windows:
+
+```
+bash
+
+
+venv\Scripts\activate
+```
+
+- En macOS/Linux:
+
+```
+bash
+
+source venv/bin/activate
+```
+
+### 3. Instalar las Dependencias en el Entorno Virtual
+
+Con el entorno virtual activado, instala las dependencias necesarias, como `sentence-transformers`, usando el siguiente comando:
+
+```
+bash
+
+pip install sentence-transformers
+```
+
+### 4. Usar el Kernel Correcto en Jupyter Notebook
+
+Si estás utilizando Jupyter Notebook, asegúrate de que el kernel esté vinculado a tu entorno virtual:
+
+- Instala el paquete `ipykernel`:
+
+```
+bash
+
+pip install ipykernel
+```
+
+- Añade el kernel al Jupyter Notebook:
+
+```
+bash
+
+python -m ipykernel install --user --name=venv --display-name "Python (venv)"
+```
+
+En el Notebook, selecciona el kernel Python (venv) desde el menú desplegable en la parte superior derecha.
+
+### 5. Alternativa: Instalar Dependencias desde el Sistema
+
+Si encuentras problemas con Jupyter Notebook, puedes instalar las dependencias directamente desde la terminal:
+
+```
+bashCopiar códigopip install sentence-transformers
+pip install chromadb
+pip install chroma-migrate
+pip install nbconvert
+```
+
+Después de instalar las dependencias correctamente, reinicia el servidor Jupyter Notebook para aplicar los cambios.
+
+Ahora podrás trabajar con Jupyter Notebook utilizando el entorno virtual con las dependencias necesarias instaladas.
+
+Para instalar dependencias listadas en un archivo `requirements.txt`, puedes usar el siguiente comando:
+
+```
+bash
+
+pip install -r requirements.txt
+```
+
+Este comando instalará todas las bibliotecas y versiones especificadas en el archivo
+
+
 ### Embedding en Procesamiento del Lenguaje Natural (PLN)
 
 En PLN, un embedding es una representación matemática de palabras o frases en un espacio vectorial continuo, diseñado para capturar relaciones semánticas y sintácticas. Este concepto permite que las palabras que comparten un significado similar estén representadas por vectores cercanos en dicho espacio. Los embeddings se han convertido en un pilar fundamental del aprendizaje profundo en PLN debido a su capacidad para manejar la dimensionalidad alta y las relaciones contextuales del lenguaje.
@@ -48,11 +142,15 @@ Similitud entre texto 4 y texto 4: 1.000
 **Texto 1:** Manchester United juega contra Liverpool en Old Trafford
 **Texto 2:** Partido de Champions League en Old Trafford
 
+
+
 ### Detalles del Embedding
 
 El modelo 'all-MiniLM-L6-v2' genera embeddings de 384 dimensiones. Este es un tamaño estándar para este modelo específico, y todos los embeddings que generes con él tendrán esta misma dimensión, independientemente de la longitud del texto de entrada.
 
 En tu código original, tanto los embeddings que guardaste en ChromaDB como los que usaste para las consultas tienen estas mismas 384 dimensiones, lo que permite hacer las comparaciones de similitud coseno entre ellos.
+
+
 
 ```python
 **Dimensión del embedding:** (1, 384)  
@@ -62,4 +160,272 @@ En tu código original, tanto los embeddings que guardaste en ChromaDB como los 
 [ 0.03745004  0.04752655 -0.02148234 -0.00557694  0.03101636 ]
 ```
 
+
+
+# Add Data
+
+
+
+```python
+modelo_embeddings = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Datos de partidos de fútbol
+partidos = [
+    {"id": "1", "texto": "Partido entre Barcelona y Real Madrid en el Camp Nou el 25 de diciembre de 2025.", "metadata": {"equipo_local": "Barcelona", "equipo_visitante": "Real Madrid", "fecha": "2025-12-25", "estadio": "Camp Nou"}},
+    {"id": "2", "texto": "Partido entre Manchester United y Liverpool en Old Trafford el 10 de enero de 2025.", "metadata": {"equipo_local": "Manchester United", "equipo_visitante": "Liverpool", "fecha": "2025-01-10", "estadio": "Old Trafford"}},
+    {"id": "3", "texto": "Partido entre Juventus y Inter de Milan en el Allianz Stadium el 5 de marzo de 2025.", "metadata": {"equipo_local": "Juventus", "equipo_visitante": "Inter de Milan", "fecha": "2025-03-05", "estadio": "Allianz Stadium"}},
+    {"id": "4", "texto": "Partido entre Bayern Munich y Borussia Dortmund en el Allianz Arena el 15 de abril de 2025.", "metadata": {"equipo_local": "Bayern Munich", "equipo_visitante": "Borussia Dortmund", "fecha": "2025-04-15", "estadio": "Allianz Arena"}},
+    {"id": "5", "texto": "Partido entre PSG y Olympique de Marsella en el Parc des Princes el 30 de mayo de 2025.", "metadata": {"equipo_local": "PSG", "equipo_visitante": "Olympique de Marsella", "fecha": "2025-05-30", "estadio": "Parc des Princes"}},
+    {"id": "6", "texto": "Partido entre Boca Juniors y River Plate en La Bombonera el 20 de junio de 2025.", "metadata": {"equipo_local": "Boca Juniors", "equipo_visitante": "River Plate", "fecha": "2025-06-20", "estadio": "La Bombonera"}},
+    {"id": "7", "texto": "Partido entre Flamengo y Palmeiras en el Maracaná el 12 de julio de 2025.", "metadata": {"equipo_local": "Flamengo", "equipo_visitante": "Palmeiras", "fecha": "2025-07-12", "estadio": "Maracaná"}},
+    {"id": "8", "texto": "Partido entre Atlético de Madrid y Sevilla en el Wanda Metropolitano el 18 de agosto de 2025.", "metadata": {"equipo_local": "Atlético de Madrid", "equipo_visitante": "Sevilla", "fecha": "2025-08-18", "estadio": "Wanda Metropolitano"}},
+    {"id": "9", "texto": "Partido entre Chelsea y Arsenal en Stamford Bridge el 28 de septiembre de 2025.", "metadata": {"equipo_local": "Chelsea", "equipo_visitante": "Arsenal", "fecha": "2025-09-28", "estadio": "Stamford Bridge"}},
+    {"id": "10", "texto": "Partido entre AC Milan y Napoli en San Siro el 10 de octubre de 2025.", "metadata": {"equipo_local": "AC Milan", "equipo_visitante": "Napoli", "fecha": "2025-10-10", "estadio": "San Siro"}},
+]
+
+
+# Generar embeddings para los textos
+textos = [partido["texto"] for partido in partidos]
+ids = [partido["id"] for partido in partidos]
+metadatas = [partido["metadata"] for partido in partidos]
+embeddings = modelo_embeddings.encode(textos).tolist()
+
+# Insertar partidos con embeddings en la colección
+collection.add(ids=ids, documents=textos, metadatas=metadatas, embeddings=embeddings)
+print("Partidos con embeddings insertados.")
+```
+
+
+
+## Query and Get
+
+
+
+### Generar embedding para la consulta
+
+consulta = "Partido entre Barcelona y Real Madrid en el Camp Nou"
+embedding_consulta = modelo_embeddings.encode([consulta]).tolist()
+
+### Buscar los documentos más similares
+
+resultados_similares = collection.query(query_embeddings=embedding_consulta, n_results=2)
+
+
+~~~python
+# Generar embedding para la consulta
+consulta = "Partido entre Barcelona y Real Madrid en el Camp Nou"
+embedding_consulta = modelo_embeddings.encode([consulta]).tolist()
+
+# Buscar los documentos más similares
+resultados_similares = collection.query(query_embeddings=embedding_consulta, n_results=2)
+print("Partidos similares:", resultados_similares)
+~~~
+
+##### Resultado de la Consulta
+
+```python
+Partidos similares: {'ids': [['2', '3']], 'embeddings': None, 'documents': [['Partido entre Manchester United y Liverpool en Old Trafford el 10 de enero de 2025.', 'Partido entre Juventus y Inter de Milan en el Allianz Stadium el 5 de marzo de 2025.']], 'uris': None, 'data': None, 'metadatas': [[{'equipo_local': 'Bucaramanga', 'equipo_visitante': 'Liverpool', 'estadio': 'Old Trafford', 'estado_partido': 'Finalizado', 'fecha': '2025-01-10', 'resultado': '2-1'}, {'equipo_local': 'Juventus', 'equipo_visitante': 'Inter de Milan', 'estadio': 'Allianz Stadium', 'fecha': '2025-03-05'}]], 'distances': [[0.844056806444902, 0.8645657386614436]], 'included': [<IncludeEnum.distances: 'distances'>, <IncludeEnum.documents: 'documents'>, <IncludeEnum.metadatas: 'metadatas'>]}
+```
+
+
+
+### Búsqueda y Filtro por Texto Exacto
+
+Este código realiza una búsqueda semántica en la colección utilizando una consulta de texto y aplica un filtro para obtener coincidencias exactas.
+
+1. **Consulta Inicial**:
+   - Se busca `"Camp Nou"` en la colección, obteniendo documentos, metadatos y distancias.
+   - El número de resultados se limita a `n_results=2`.
+
+2. **Filtro de Coincidencias Exactas**:
+   - Se filtran resultados cuyo texto contiene `"Camp Nou"` o cuyo metadato `estadio` coincide exactamente con `"Camp Nou"`.
+
+3. **Impresión de Resultados**:
+   - Los documentos filtrados se muestran con su texto, metadatos y distancia.
+
+
+```python
+query_texto = "Camp Nou"
+resultados = collection.query(
+    query_texts=[query_texto],
+    n_results=2,
+    include=["documents", "metadatas", "distances"]
+)
+# Filtro de coincidencia exacta
+resultados_filtrados = [
+    {
+        "texto": doc,
+        "metadata": meta,
+        "distancia": dist
+    }
+    for doc, meta, dist in zip(
+        resultados["documents"][0],
+        resultados["metadatas"][0],
+        resultados["distances"][0]
+    )
+    if "Camp Nou" in doc or meta.get("estadio") == "Camp Nou"
+]
+
+for i, res in enumerate(resultados_filtrados, start=1):
+    print(f"\nDocumento {i}:")
+    print(f"Texto: {res['texto']}")
+    print(f"Metadata: {res['metadata']}")
+    print(f"Distancia: {res['distancia']:.4f}")
+```
+
+##### Resultado de la Consulta
+
+```python
+Documento 1:
+Texto: Partido entre Barcelona y Real Madrid en el Camp Nou el 25 de diciembre de 2025, con 70,000 espectadores.
+Metadata: {'equipo_local': 'Barcelona', 'equipo_visitante': 'Real Madrid', 'estadio': 'Camp Nou', 'fecha': '2025-12-25'}
+Distancia: 1.5588
+```
+
+
+
+### Búsqueda Filtrada por Metadatos equipo local 
+
+Este código realiza una búsqueda semántica con un filtro adicional aplicado sobre los metadatos.
+
+- **Consulta**: Busca documentos relacionados con `"Barcelona"`.
+- **Filtro**: Incluye solo resultados donde `equipo_local` es `"Barcelona"`.
+- **Resultados**: Imprime los documentos, metadatos, y distancias relevantes.
+
+```python
+query_filtrado = collection.query(
+    query_texts=["Barcelona"],
+    n_results=2,
+    where={"equipo_local": "Barcelona"},  
+    include=["documents", "metadatas", "distances"]
+)
+
+print("Resultados con filtro 'equipo_local = Barcelona':")
+for i in range(len(query_filtrado['documents'][0])):
+    print(f"\nDocumento {i+1}:")
+    print(f"Texto: {query_filtrado['documents'][0][i]}")
+    print(f"Metadata: {query_filtrado['metadatas'][0][i]}")
+    print(f"Distancia: {query_filtrado['distances'][0][i]:.4f}")
+```
+
+##### Resultado de la Consulta
+
+```python
+Resultados con filtro 'equipo_local = Barcelona':
+```
+
+### Búsqueda por Estadio
+
+Este código realiza una búsqueda en la colección filtrando por un estadio específico, en este caso, "Camp Nou".
+
+```python
+resultados_estadio = collection.query(
+    query_texts=[""],
+    n_results=5,
+    where={"estadio": "Camp Nou"},
+    include=["documents", "metadatas"]
+)
+for i, (doc, meta) in enumerate(zip(resultados_estadio['documents'][0], resultados_estadio['metadatas'][0])):
+    print(f"\nPartido {i+1}:")
+    print(f"Texto: {doc}")
+    print(f"Metadata: {meta}")
+```
+
+##### Resultado de la Consulta
+
+```python
+Partido 1:
+Texto: Partido entre Barcelona y Real Madrid en el Camp Nou el 25 de diciembre de 2025, con 70,000 espectadores.
+Metadata: {'equipo_local': 'Barcelona', 'equipo_visitante': 'Real Madrid', 'estadio': 'Camp Nou', 'fecha': '2025-12-25'}
+```
+
+
+
+#### Búsqueda por Fecha Específica
+
+Este código realiza una búsqueda en la colección filtrando por una fecha específica.
+
+```python
+resultados_fecha = collection.query(
+    query_texts=[""],
+    n_results=5,
+    where={"fecha": "2025-12-25"},
+    include=["documents", "metadatas"]
+)
+
+for i, (doc, meta) in enumerate(zip(resultados_fecha['documents'][0], resultados_fecha['metadatas'][0])):
+    print(f"\nPartido {i+1}:")
+    print(f"Texto: {doc}")
+    print(f"Metadata: {meta}")
+```
+
+
+
+##### Resultado de la Consulta
+
+```python
+Texto: Partido entre Barcelona y Real Madrid en el Camp Nou el 25 de diciembre de 2025, con 70,000 espectadores.
+Metadata: {'equipo_local': 'Barcelona', 'equipo_visitante': 'Real Madrid', 'estadio': 'Camp Nou', 'fecha': '2025-12-25'}
+```
+
+
+
+# Update Data
+
+#### Este código actualiza los metadatos de un partido específico en la colección.
+
+```python
+collection.update(
+    ids=["2"],
+    metadatas=[{
+        "equipo_local": "Bucaramanga",
+        "equipo_visitante": "Liverpool",
+        "fecha": "2025-01-10",
+        "estadio": "Old Trafford",
+        "estado_partido": "Finalizado",
+        "resultado": "2-1"
+    }]
+)
+
+```
+
+#### Actualización de Partido y su Embedding
+
+Este código actualiza la información de un partido en la colección, incluyendo su texto, metadatos, y embedding.
+
+```python
+nuevo_texto = "Partido entre Barcelona y Real Madrid en el Camp Nou el 25 de diciembre de 2025, con 70,000 espectadores."
+nuevo_embedding = modelo_embeddings.encode([nuevo_texto]).tolist()
+collection.delete(ids=["1"])  # Eliminar partido antiguo
+collection.add(ids=["1"], documents=[nuevo_texto], metadatas=[{"equipo_local": "Barcelona", "equipo_visitante": "Real Madrid", "fecha": "2025-12-25", "estadio": "Camp Nou"}], embeddings=nuevo_embedding)
+print("Partido actualizado con nuevo embedding.")
+```
+
+##### Resultado de la Consulta
+
+```python
+Delete of nonexisting embedding ID: 1
+Partido actualizado con nuevo embedding.
+```
+
+
+
+# Delete Data
+
+#### Eliminación de Documento por ID
+
+Este código elimina un documento específico de la colección utilizando su ID.
+
+```python
+collection.delete(ids=["9"])
+print("Documento con ID 9 eliminado.")
+
+```
+
+##### Resultado de la Consulta
+
+```python
+Delete of nonexisting embedding ID: 9
+Documento con ID 9 eliminado.
+```
 
