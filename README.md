@@ -178,7 +178,8 @@ net.save_graph("grafo_actualizado_busqueda.html")
 
 Aquí puedes ver una demostración en video de cómo funcionan las búsquedas semánticas en la aplicación:
 
-[![Muestra de Funcionamiento: Búsquedas Semánticas](https://img.youtube.com/vi/qL_kZXpux9w/0.jpg)]
+[![Muestra de Funcionamiento: Búsquedas Semánticas](https://img.youtube.com/vi/qL_kZXpux9w/0.jpg)](https://youtu.be/qL_kZXpux9w?si=au86-Rn1WqwtDMbB)
+
 
 
 
