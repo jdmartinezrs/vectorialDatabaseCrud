@@ -25,3 +25,6 @@ chromadb/
 # Ignorar archivos de configuración específicos de sistemas operativos
 .DS_Store  # macOS
 Thumbs.db  # Windows
+
+grafo.html
+grafo_actualizado_busqueda.html

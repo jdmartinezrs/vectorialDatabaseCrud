@@ -3,6 +3,9 @@ import pandas as pd
 from pyvis.network import Network
 import streamlit.components.v1 as components
 import chromadb
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Configuración de la página
 st.set_page_config(layout="wide")
@@ -26,6 +29,12 @@ for i in range(len(partidos_chroma["ids"])):
     partidos.append(partido)
 
 df_partidos = pd.DataFrame(partidos)
+
+# Cargar el modelo de embeddings (Sentence Transformer)
+model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+
+# Obtener los embeddings de los textos de los partidos
+embeddings = model.encode(df_partidos['texto'].tolist())
 
 # Filtros en la barra lateral
 st.sidebar.header("Filtros")
@@ -68,7 +77,7 @@ if filtro_fecha and fecha:
 
 # Mostrar los partidos filtrados
 st.subheader("Partidos filtrados")
-st.write(partidos_filtrados)
+st.dataframe(partidos_filtrados, hide_index=True)  # Ocultar el índice
 
 # 4. Preparar los datos para el gráfico
 nodes = []  # Lista de nodos (equipos)
@@ -161,3 +170,81 @@ net.save_graph("grafo.html")
 with open("grafo.html", "r", encoding="utf-8") as f:
     html_content = f.read()
 components.html(html_content, height=600)
+
+# 5. Entrada para buscar partidos
+st.subheader("Buscar partidos")
+
+# Entrada de búsqueda
+texto_buscar = st.text_input("Escribe el nombre de un equipo, un marcador, un estadio, una etapa o información adicional para ver los partidos:")
+
+# Calcular y mostrar partidos según la búsqueda
+if texto_buscar:
+    # Filtrar partidos según el texto ingresado
+    partidos_busqueda = df_partidos[
+        (df_partidos["equipo_local"].str.contains(texto_buscar, case=False)) |
+        (df_partidos["equipo_visitante"].str.contains(texto_buscar, case=False)) |
+        (df_partidos["resultado"].str.contains(texto_buscar, case=False)) |
+        (df_partidos["estadio"].str.contains(texto_buscar, case=False)) |
+        (df_partidos["etapa"].str.contains(texto_buscar, case=False)) |
+        (df_partidos["texto"].str.contains(texto_buscar, case=False))  # Incluir el campo "texto" en la búsqueda
+    ]
+    
+    if len(partidos_busqueda) > 0:
+        st.write(f"Partidos encontrados para '{texto_buscar}':")
+        st.dataframe(partidos_busqueda, hide_index=True)  # Ocultar el índice
+
+        # Actualizar el gráfico para mostrar todos los partidos encontrados
+        nodes_busqueda = []  # Nodos de los equipos encontrados
+        edges_busqueda = []  # Aristas para los partidos encontrados
+
+        # Agregar los partidos encontrados al gráfico
+        for _, partido in partidos_busqueda.iterrows():
+            # Agregar nodos si el equipo no está ya en el gráfico
+            equipos_en_partido = [partido["equipo_local"], partido["equipo_visitante"]]
+            for equipo in equipos_en_partido:
+                if equipo not in [n["label"] for n in nodes]:  # Verificar si el equipo ya está en los nodos
+                    bandera_url = banderas.get(equipo, "https://flagcdn.com/xx.svg")
+                    nodes.append({
+                        "id": len(nodes),
+                        "label": equipo,
+                        "title": equipo,
+                        "value": 1,
+                        "shape": "circularImage",
+                        "image": bandera_url,
+                        "size": 25,
+                        "borderWidth": 0,
+                        "color": {"border": "transparent", "background": "transparent"}
+                    })
+            
+            # Crear aristas para los partidos
+            src = equipos_unicos.index(partido["equipo_local"])
+            dst = equipos_unicos.index(partido["equipo_visitante"])
+            edges_busqueda.append({
+                "source": src,
+                "target": dst,
+                "label": partido["resultado"],
+                "title": f"Estadio: {partido['estadio']}, Etapa: {partido['etapa']}",
+                "width": 2,
+                "color": "#000000"
+            })
+        
+        # Crear el gráfico con Pyvis (actualizado para los partidos encontrados)
+        net = Network(height="500px", width="100%", notebook=True)
+        for node in nodes:
+            net.add_node(node["id"], label=node["label"], title=node["title"], shape=node["shape"], image=node["image"], size=node["size"], borderWidth=node["borderWidth"], color=node["color"])
+        for edge in edges_busqueda:
+            net.add_edge(edge["source"], edge["target"], label=edge["label"], title=edge["title"], width=edge["width"], color=edge["color"])
+
+        # Configuración adicional del gráfico
+        net.toggle_physics(True)
+        net.set_edge_smooth('dynamic')
+
+        # Guardar el gráfico en un archivo HTML
+        net.save_graph("grafo_actualizado_busqueda.html")
+
+        # Mostrar el gráfico en Streamlit
+        with open("grafo_actualizado_busqueda.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        components.html(html_content, height=600)
+    else:
+        st.write(f"No se encontraron partidos para '{texto_buscar}'.")

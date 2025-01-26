@@ -1,3 +1,80 @@
+# **Visualización Interactiva de Partidos de Fútbol de la FIFA 2022**
+
+Este proyecto es una aplicación interactiva que permite visualizar partidos de fútbol de la FIFA 2022 utilizando **Streamlit**, **Pyvis** y **ChromaDB**. La aplicación incluye filtros para explorar partidos por estadio, resultado, etapa y fecha, y también permite realizar búsquedas semánticas utilizando embeddings generados con **Sentence Transformers**.
+
+## **Requisitos**
+
+Antes de ejecutar el proyecto, asegúrate de tener instalado lo siguiente:
+
+- Python 3.8 o superior.
+- Gestor de paquetes `pip`.
+
+1. Clona el repositorio:
+
+   ```python
+   git clone https://github.com/jdmartinezrs/vectorialDatabaseCrud.git
+   cd tu-repositorio
+   ```
+
+2. Crea un entorno virtual (opcional pero recomendado):
+
+   ```python
+   python -m venv venv
+   source venv/bin/activate  # En Linux/Mac
+   venv\Scripts\activate     # En Windows
+   ```
+
+3. Instala las dependencias:
+
+   ```python
+   pip install -r requirements.txt
+   ```
+
+
+
+### **Flujo del Código**
+
+#### **a. Configuración Inicial**
+
+- **Streamlit**: Se configura la página con un diseño amplio (`layout="wide"`) y un título descriptivo.
+- **ChromaDB**: Se conecta a una base de datos local (`chroma_db`) y se obtiene la colección `partidos_fifa_2022`, que contiene los datos de los partidos.
+
+#### **b. Carga de Datos**
+
+- Los datos de los partidos se obtienen de ChromaDB y se convierten en un DataFrame de Pandas para facilitar su manipulación.
+- Cada partido incluye:
+  - Un ID único.
+  - Un texto descriptivo (por ejemplo, "Partido entre Qatar y Ecuador en el Al Bayt Stadium el 20 de noviembre de 2022").
+  - Metadatos como equipos, fecha, estadio, etapa, grupo y resultado.
+
+#### **d. Filtros Interactivos**
+
+- La aplicación permite filtrar los partidos por:
+  - **Estadio**: Selecciona partidos jugados en un estadio específico.
+  - **Resultado**: Filtra partidos con un resultado específico (por ejemplo, "2-1").
+  - **Etapa**: Muestra partidos de una etapa específica (por ejemplo, "Fase de grupos").
+  - **Fecha**: Filtra partidos por fecha.
+
+#### **e. Gráfico Interactivo**
+
+- Se crea un gráfico de red interactivo utilizando **Pyvis**:
+  - **Nodos**: Representan los equipos, con imágenes de banderas como íconos.
+  - **Aristas**: Representan los partidos, con etiquetas que muestran el resultado y tooltips con información adicional (estadio y etapa).
+
+├── chroma_db/                  # Base de datos ChromaDB
+├── grafo.html                  # Archivo HTML generado por Pyvis
+├── grafo_actualizado_busqueda.html
+├── app.py                      # Script principal de la aplicación
+├── requirements.txt            # Dependencias del proyecto
+├── README.md                   # Documentación del proyecto
+└── .gitignore                  # Archivo para ignorar archivos no deseados
+
+
+
+[![Miniatura del video](https://img.youtube.com/vi/78yA4XL2HKU/hqdefault.jpg)](https://www.youtube.com/watch?v=78yA4XL2HKU)
+
+---------------------------------------------------------------------------------------------------------------------------
+
 # CRUD en Base Vectorial con ChromaDB
 
 ```
