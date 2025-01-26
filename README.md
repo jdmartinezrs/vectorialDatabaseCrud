@@ -61,17 +61,127 @@ Antes de ejecutar el proyecto, asegúrate de tener instalado lo siguiente:
   - **Nodos**: Representan los equipos, con imágenes de banderas como íconos.
   - **Aristas**: Representan los partidos, con etiquetas que muestran el resultado y tooltips con información adicional (estadio y etapa).
 
-├── chroma_db/                  # Base de datos ChromaDB
-├── grafo.html                  # Archivo HTML generado por Pyvis
-├── grafo_actualizado_busqueda.html
-├── app.py                      # Script principal de la aplicación
-├── requirements.txt            # Dependencias del proyecto
-├── README.md                   # Documentación del proyecto
-└── .gitignore                  # Archivo para ignorar archivos no deseados
 
-
-
+## Muestra de Funcionamiento: Video
 [![Miniatura del video](https://img.youtube.com/vi/78yA4XL2HKU/hqdefault.jpg)](https://www.youtube.com/watch?v=78yA4XL2HKU)
+
+
+## **¿Qué son las Consultas Semánticas?**
+
+Las consultas semánticas se basan en el concepto de **similitud semántica**, que mide cuán similares son dos textos en términos de su significado. A diferencia de las búsquedas tradicionales (que buscan coincidencias exactas de palabras), las consultas semánticas utilizan modelos de lenguaje para capturar el contexto y el significado detrás de las palabras.
+
+### **Ejemplo**:
+
+- **Consulta tradicional**: Si buscas "partidos de Brasil", solo obtendrás resultados que contengan exactamente las palabras "partidos" y "Brasil".
+- **Consulta semántica**: Si buscas "partidos emocionantes de Brasil", obtendrás resultados que capturan el significado de "emocionantes", incluso si esa palabra no aparece en el texto.
+
+### **1. Comparación con el Código Anterior**
+
+#### **Mejoras Principales**
+
+1. **Normalización de Texto**:
+   - Se ha añadido un proceso de normalización de texto que incluye:
+     - Conversión a minúsculas.
+     - Eliminación de caracteres especiales y números.
+     - Eliminación de stopwords (palabras comunes que no aportan significado).
+     - Lematización (reducción de palabras a su forma base).
+   - Esto mejora la calidad de los embeddings y, por tanto, la precisión de las búsquedas semánticas.
+2. **Puntuación de Similitud**:
+   - Ahora se muestra un **score** de similitud para cada partido encontrado, lo que permite al usuario entender qué tan relevante es cada resultado.
+3. **Optimización del Gráfico**:
+   - El gráfico se actualiza dinámicamente para mostrar solo los partidos relevantes encontrados en la búsqueda semántica.
+4. **Integración de NLTK**:
+   - Se utiliza la biblioteca **NLTK** para realizar la normalización de texto, lo que añade robustez al procesamiento de lenguaje natural (NLP).
+
+------
+
+### **2. Proceso de Búsqueda Semántica**
+
+#### **a. Normalización del Texto**
+
+- **Objetivo**: Preparar el texto para generar embeddings más precisos.
+- **Pasos**:
+  1. **Conversión a minúsculas**: Para evitar diferencias entre mayúsculas y minúsculas.
+  2. **Eliminación de caracteres especiales**: Se eliminan signos de puntuación y números que no aportan significado.
+  3. **Eliminación de stopwords**: Se eliminan palabras comunes como "y", "de", "en", etc., que no aportan significado semántico.
+  4. **Lematización**: Se reduce cada palabra a su forma base (por ejemplo, "corriendo" → "correr").
+
+#### **b. Generación de Embeddings**
+
+- **Objetivo**: Convertir el texto normalizado en vectores numéricos que capturen su significado semántico.
+- **Proceso**:
+  1. Se utiliza el modelo `paraphrase-MiniLM-L6-v2` de **Sentence Transformers** para generar embeddings.
+  2. Cada texto normalizado se convierte en un vector de 384 dimensiones.
+
+#### **c. Cálculo de Similitud**
+
+- **Objetivo**: Encontrar los partidos más relevantes basados en la consulta del usuario.
+- **Proceso**:
+  1. Se genera un embedding para la consulta del usuario.
+  2. Se calcula la **similitud del coseno** entre el embedding de la consulta y los embeddings de los textos de los partidos.
+  3. Se ordenan los partidos por su puntaje de similitud (de mayor a menor).
+
+#### **d. Visualización de Resultados**
+
+- **Objetivo**: Mostrar los partidos más relevantes y actualizar el gráfico interactivo.
+- **Proceso**:
+  1. Se muestran los 5 partidos más relevantes en una tabla, junto con su puntaje de similitud.
+  2. Se actualiza el gráfico de red para mostrar solo los partidos encontrados.
+
+#### **a. Normalización de Texto**
+
+```
+def normalize_text(text):
+    text = text.lower()  # Convertir a minúsculas
+    text = re.sub(r'\W+', ' ', text)  # Eliminar caracteres especiales
+    stop_words = set(stopwords.words('spanish'))  # Eliminar stopwords
+    text = ' '.join([word for word in text.split() if word not in stop_words])
+    lemmatizer = WordNetLemmatizer()  # Lematización
+    text = ' '.join([lemmatizer.lemmatize(word) for word in text.split()])
+    return text
+```
+
+#### **b. Búsqueda Semántica**
+
+```python
+if texto_buscar:
+    texto_buscar_normalizado = normalize_text(texto_buscar)  # Normalizar consulta
+    query_embedding = model.encode([texto_buscar_normalizado])  # Generar embedding
+    similitudes = cosine_similarity(query_embedding, embeddings)  # Calcular similitud
+    indices_similares = np.argsort(similitudes[0])[::-1]  # Ordenar por similitud
+    partidos_relevantes = df_partidos.iloc[indices_similares[:5]].copy()  # Obtener los 5 más relevantes
+    partidos_relevantes["score"] = similitudes[0][indices_similares[:5]]  # Añadir columna de score
+```
+
+#### **c. Actualización del Gráfico**
+
+```python
+net = Network(height="500px", width="100%", notebook=True)
+for node in nodes:
+    net.add_node(node["id"], label=node["label"], title=node["title"], shape=node["shape"], image=node["image"], size=node["size"], borderWidth=node["borderWidth"], color=node["color"])
+for edge in edges:
+    net.add_edge(edge["source"], edge["target"], label=edge["label"], title=edge["title"], width=edge["width"], color=edge["color"])
+net.save_graph("grafo_actualizado_busqueda.html")
+```
+
+### **5. Tecnologías Utilizadas**
+
+- **Streamlit**: Para la interfaz de usuario.
+- **Pyvis**: Para gráficos de red interactivos.
+- **ChromaDB**: Para almacenar los datos de los partidos.
+- **Sentence Transformers**: Para generar embeddings.
+- **NLTK**: Para normalización de texto.
+- **Scikit-learn**: Para calcular la similitud del coseno.
+
+## **Muestra de Funcionamiento: Búsquedas Semánticas**
+
+Aquí puedes ver una demostración en video de cómo funcionan las búsquedas semánticas en la aplicación:
+
+[![Muestra de Funcionamiento: Búsquedas Semánticas](https://img.youtube.com/vi/qL_kZXpux9w/0.jpg)
+
+
+
+
 
 ---------------------------------------------------------------------------------------------------------------------------
 

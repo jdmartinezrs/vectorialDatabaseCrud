@@ -6,6 +6,14 @@ import chromadb
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+import re
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+import nltk
+
+# Descargar recursos de NLTK
+nltk.download('stopwords')
+nltk.download('wordnet')
 
 # Configuración de la página
 st.set_page_config(layout="wide")
@@ -30,58 +38,28 @@ for i in range(len(partidos_chroma["ids"])):
 
 df_partidos = pd.DataFrame(partidos)
 
+# Función para normalizar texto
+def normalize_text(text):
+    # Convertir a minúsculas
+    text = text.lower()
+    # Eliminar caracteres especiales y números
+    text = re.sub(r'\W+', ' ', text)
+    # Eliminar stopwords
+    stop_words = set(stopwords.words('spanish'))
+    text = ' '.join([word for word in text.split() if word not in stop_words])
+    # Lematización
+    lemmatizer = WordNetLemmatizer()
+    text = ' '.join([lemmatizer.lemmatize(word) for word in text.split()])
+    return text
+
+# Normalizar los textos de los partidos
+df_partidos['texto_normalizado'] = df_partidos['texto'].apply(normalize_text)
+
 # Cargar el modelo de embeddings (Sentence Transformer)
 model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
 # Obtener los embeddings de los textos de los partidos
-embeddings = model.encode(df_partidos['texto'].tolist())
-
-# Filtros en la barra lateral
-st.sidebar.header("Filtros")
-
-# Checkbox para activar/desactivar cada filtro
-filtro_estadio = st.sidebar.checkbox("Filtrar por estadio", value=True)
-filtro_resultado = st.sidebar.checkbox("Filtrar por resultado", value=True)
-filtro_etapa = st.sidebar.checkbox("Filtrar por etapa", value=True)
-filtro_fecha = st.sidebar.checkbox("Filtrar por fecha", value=True)
-
-# Selectores condicionales
-estadio = None
-resultado = None
-etapa = None
-fecha = None
-
-# Obtener opciones únicas para los filtros
-if filtro_estadio:
-    estadio = st.sidebar.selectbox("Selecciona un estadio", df_partidos["estadio"].unique())
-if filtro_resultado:
-    resultado = st.sidebar.selectbox("Selecciona un resultado", df_partidos["resultado"].unique())
-if filtro_etapa:
-    etapa = st.sidebar.selectbox("Selecciona una etapa", df_partidos["etapa"].unique())
-if filtro_fecha:
-    # Extraer fechas únicas y ordenarlas
-    fechas_unicas = sorted(df_partidos["fecha"].unique())
-    fecha = st.sidebar.selectbox("Selecciona una fecha", fechas_unicas)
-
-# Filtrar los partidos según los filtros seleccionados
-partidos_filtrados = df_partidos.copy()
-
-if filtro_estadio and estadio:
-    partidos_filtrados = partidos_filtrados[partidos_filtrados["estadio"] == estadio]
-if filtro_resultado and resultado:
-    partidos_filtrados = partidos_filtrados[partidos_filtrados["resultado"] == resultado]
-if filtro_etapa and etapa:
-    partidos_filtrados = partidos_filtrados[partidos_filtrados["etapa"] == etapa]
-if filtro_fecha and fecha:
-    partidos_filtrados = partidos_filtrados[partidos_filtrados["fecha"] == fecha]
-
-# Mostrar los partidos filtrados
-st.subheader("Partidos filtrados")
-st.dataframe(partidos_filtrados, hide_index=True)  # Ocultar el índice
-
-# 4. Preparar los datos para el gráfico
-nodes = []  # Lista de nodos (equipos)
-edges = []  # Lista de aristas (partidos)
+embeddings = model.encode(df_partidos['texto_normalizado'].tolist())
 
 # Diccionario de banderas (URLs de imágenes de banderas)
 banderas = {
@@ -119,132 +97,89 @@ banderas = {
     "Ghana": "https://flagcdn.com/gh.svg",
 }
 
-# Crear nodos únicos para los equipos
-equipos_unicos = list(set(df_partidos["equipo_local"].tolist() + df_partidos["equipo_visitante"].tolist()))
-for i, equipo in enumerate(equipos_unicos):
-    # Obtener la URL de la bandera del equipo
-    bandera_url = banderas.get(equipo, "https://flagcdn.com/xx.svg")  # Bandera por defecto si no se encuentra
-    nodes.append({
-        "id": i,
-        "label": equipo,
-        "title": equipo,
-        "value": 1,  # Tamaño del nodo
-        "shape": "circularImage",  # Usar imagen dentro de un círculo
-        "image": bandera_url,  # URL de la bandera
-        "size": 25,  # Tamaño de la imagen
-        "borderWidth": 0,  # Eliminar el borde del círculo
-        "color": {
-            "border": "transparent",  # Hacer el borde transparente
-            "background": "transparent"  # Hacer el fondo transparente
-        }
-    })
-
-# Crear aristas para los partidos
-for _, partido in partidos_filtrados.iterrows():
-    src = equipos_unicos.index(partido["equipo_local"])
-    dst = equipos_unicos.index(partido["equipo_visitante"])
-    edges.append({
-        "source": src,
-        "target": dst,
-        "label": partido["resultado"],  # Resultado como etiqueta de la arista
-        "title": f"Estadio: {partido['estadio']}, Etapa: {partido['etapa']}",  # Información adicional
-        "width": 2,  # Grosor de la línea
-        "color": "#000000"  # Color de la línea
-    })
-
-# Crear el gráfico con Pyvis
-net = Network(height="500px", width="100%", notebook=True)
-for node in nodes:
-    net.add_node(node["id"], label=node["label"], title=node["title"], shape=node["shape"], image=node["image"], size=node["size"], borderWidth=node["borderWidth"], color=node["color"])
-for edge in edges:
-    net.add_edge(edge["source"], edge["target"], label=edge["label"], title=edge["title"], width=edge["width"], color=edge["color"])
-
-# Configuración adicional del gráfico
-net.toggle_physics(True)  # Activar física para mejor distribución
-net.set_edge_smooth('dynamic')  # Suavizar las aristas
-
-# Guardar el gráfico en un archivo HTML
-net.save_graph("grafo.html")
-
-# Mostrar el gráfico en Streamlit
-with open("grafo.html", "r", encoding="utf-8") as f:
-    html_content = f.read()
-components.html(html_content, height=600)
-
-# 5. Entrada para buscar partidos
-st.subheader("Buscar partidos")
+# 5. Entrada para buscar partidos semánticamente
+st.subheader("Búsqueda semántica de partidos")
 
 # Entrada de búsqueda
-texto_buscar = st.text_input("Escribe el nombre de un equipo, un marcador, un estadio, una etapa o información adicional para ver los partidos:")
+texto_buscar = st.text_input("Escribe una descripción, un equipo, un estadio, una etapa o cualquier información relacionada:")
 
-# Calcular y mostrar partidos según la búsqueda
+# Calcular y mostrar partidos según la búsqueda semántica
 if texto_buscar:
-    # Filtrar partidos según el texto ingresado
-    partidos_busqueda = df_partidos[
-        (df_partidos["equipo_local"].str.contains(texto_buscar, case=False)) |
-        (df_partidos["equipo_visitante"].str.contains(texto_buscar, case=False)) |
-        (df_partidos["resultado"].str.contains(texto_buscar, case=False)) |
-        (df_partidos["estadio"].str.contains(texto_buscar, case=False)) |
-        (df_partidos["etapa"].str.contains(texto_buscar, case=False)) |
-        (df_partidos["texto"].str.contains(texto_buscar, case=False))  # Incluir el campo "texto" en la búsqueda
-    ]
+    # Normalizar la consulta del usuario
+    texto_buscar_normalizado = normalize_text(texto_buscar)
     
-    if len(partidos_busqueda) > 0:
-        st.write(f"Partidos encontrados para '{texto_buscar}':")
-        st.dataframe(partidos_busqueda, hide_index=True)  # Ocultar el índice
+    # Generar embedding para la consulta del usuario
+    query_embedding = model.encode([texto_buscar_normalizado])
 
-        # Actualizar el gráfico para mostrar todos los partidos encontrados
-        nodes_busqueda = []  # Nodos de los equipos encontrados
-        edges_busqueda = []  # Aristas para los partidos encontrados
+    # Calcular similitud del coseno entre la consulta y los embeddings de los partidos
+    similitudes = cosine_similarity(query_embedding, embeddings)
 
-        # Agregar los partidos encontrados al gráfico
-        for _, partido in partidos_busqueda.iterrows():
-            # Agregar nodos si el equipo no está ya en el gráfico
-            equipos_en_partido = [partido["equipo_local"], partido["equipo_visitante"]]
-            for equipo in equipos_en_partido:
-                if equipo not in [n["label"] for n in nodes]:  # Verificar si el equipo ya está en los nodos
-                    bandera_url = banderas.get(equipo, "https://flagcdn.com/xx.svg")
-                    nodes.append({
-                        "id": len(nodes),
-                        "label": equipo,
-                        "title": equipo,
-                        "value": 1,
-                        "shape": "circularImage",
-                        "image": bandera_url,
-                        "size": 25,
-                        "borderWidth": 0,
-                        "color": {"border": "transparent", "background": "transparent"}
-                    })
-            
-            # Crear aristas para los partidos
-            src = equipos_unicos.index(partido["equipo_local"])
-            dst = equipos_unicos.index(partido["equipo_visitante"])
-            edges_busqueda.append({
-                "source": src,
-                "target": dst,
-                "label": partido["resultado"],
-                "title": f"Estadio: {partido['estadio']}, Etapa: {partido['etapa']}",
-                "width": 2,
-                "color": "#000000"
-            })
-        
-        # Crear el gráfico con Pyvis (actualizado para los partidos encontrados)
-        net = Network(height="500px", width="100%", notebook=True)
-        for node in nodes:
-            net.add_node(node["id"], label=node["label"], title=node["title"], shape=node["shape"], image=node["image"], size=node["size"], borderWidth=node["borderWidth"], color=node["color"])
-        for edge in edges_busqueda:
-            net.add_edge(edge["source"], edge["target"], label=edge["label"], title=edge["title"], width=edge["width"], color=edge["color"])
+    # Obtener los índices de los partidos más similares
+    indices_similares = np.argsort(similitudes[0])[::-1]  # Ordenar de mayor a menor similitud
 
-        # Configuración adicional del gráfico
-        net.toggle_physics(True)
-        net.set_edge_smooth('dynamic')
+    # Crear un DataFrame con los partidos más relevantes y sus puntajes de similitud
+    partidos_relevantes = df_partidos.iloc[indices_similares[:5]].copy()
+    partidos_relevantes["score"] = similitudes[0][indices_similares[:5]]  # Añadir columna de score
 
-        # Guardar el gráfico en un archivo HTML
-        net.save_graph("grafo_actualizado_busqueda.html")
+    # Reordenar columnas para mostrar el score primero
+    partidos_relevantes = partidos_relevantes[["score", "id", "texto", "equipo_local", "equipo_visitante", "estadio", "resultado", "etapa", "fecha"]]
 
-        # Mostrar el gráfico en Streamlit
-        with open("grafo_actualizado_busqueda.html", "r", encoding="utf-8") as f:
-            html_content = f.read()
-        components.html(html_content, height=600)
-    else:
-        st.write(f"No se encontraron partidos para '{texto_buscar}'.")
+    # Mostrar los partidos más relevantes
+    st.write(f"Partidos más relevantes para '{texto_buscar}':")
+    st.dataframe(partidos_relevantes, hide_index=True)
+
+    # Actualizar el gráfico para mostrar los partidos encontrados
+    nodes = []  # Lista de nodos (equipos)
+    edges = []  # Lista de aristas (partidos)
+
+    # Crear nodos únicos para los equipos
+    equipos_unicos = list(set(df_partidos["equipo_local"].tolist() + df_partidos["equipo_visitante"].tolist()))
+    for i, equipo in enumerate(equipos_unicos):
+        # Obtener la URL de la bandera del equipo
+        bandera_url = banderas.get(equipo, "https://flagcdn.com/xx.svg")  # Bandera por defecto si no se encuentra
+        nodes.append({
+            "id": i,
+            "label": equipo,
+            "title": equipo,
+            "value": 1,  # Tamaño del nodo
+            "shape": "circularImage",  # Usar imagen dentro de un círculo
+            "image": bandera_url,  # URL de la bandera
+            "size": 25,  # Tamaño de la imagen
+            "borderWidth": 0,  # Eliminar el borde del círculo
+            "color": {
+                "border": "transparent",  # Hacer el borde transparente
+                "background": "transparent"  # Hacer el fondo transparente
+            }
+        })
+
+    # Crear aristas para los partidos encontrados
+    for _, partido in partidos_relevantes.iterrows():
+        src = equipos_unicos.index(partido["equipo_local"])
+        dst = equipos_unicos.index(partido["equipo_visitante"])
+        edges.append({
+            "source": src,
+            "target": dst,
+            "label": partido["resultado"],  # Resultado como etiqueta de la arista
+            "title": f"Estadio: {partido['estadio']}, Etapa: {partido['etapa']}",  # Información adicional
+            "width": 2,  # Grosor de la línea
+            "color": "#000000"  # Color de la línea
+        })
+
+    # Crear el gráfico con Pyvis
+    net = Network(height="500px", width="100%", notebook=True)
+    for node in nodes:
+        net.add_node(node["id"], label=node["label"], title=node["title"], shape=node["shape"], image=node["image"], size=node["size"], borderWidth=node["borderWidth"], color=node["color"])
+    for edge in edges:
+        net.add_edge(edge["source"], edge["target"], label=edge["label"], title=edge["title"], width=edge["width"], color=edge["color"])
+
+    # Configuración adicional del gráfico
+    net.toggle_physics(True)  # Activar física para mejor distribución
+    net.set_edge_smooth('dynamic')  # Suavizar las aristas
+
+    # Guardar el gráfico en un archivo HTML
+    net.save_graph("grafo_actualizado_busqueda.html")
+
+    # Mostrar el gráfico en Streamlit
+    with open("grafo_actualizado_busqueda.html", "r", encoding="utf-8") as f:
+        html_content = f.read()
+    components.html(html_content, height=600)
