@@ -75,6 +75,7 @@ Las consultas semánticas se basan en el concepto de **similitud semántica**, q
 - **Consulta tradicional**: Si buscas "partidos de Brasil", solo obtendrás resultados que contengan exactamente las palabras "partidos" y "Brasil".
 - **Consulta semántica**: Si buscas "partidos emocionantes de Brasil", obtendrás resultados que capturan el significado de "emocionantes", incluso si esa palabra no aparece en el texto.
 
+
 ### **1. Comparación con el Código Anterior**
 
 #### **Mejoras Principales**
@@ -177,7 +178,12 @@ net.save_graph("grafo_actualizado_busqueda.html")
 
 Aquí puedes ver una demostración en video de cómo funcionan las búsquedas semánticas en la aplicación:
 
-[![Muestra de Funcionamiento: Búsquedas Semánticas](https://img.youtube.com/vi/qL_kZXpux9w/0.jpg)
+[![Muestra de Funcionamiento: Búsquedas Semánticas](https://img.youtube.com/vi/qL_kZXpux9w/0.jpg)]
+
+
+
+
+
 
 
 
